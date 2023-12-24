@@ -214,23 +214,24 @@ def validate_inputs():
         entry_1.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
         entry_2.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
         entry_3.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
-
-        if check_data():
-            if step <=5:
-                NextStep(float(entry_var_2.get()), float(entry_var_3.get()))   
-
-                if (currentPercent == 0 or currentPercent is None) or ( currentPercent > float(entry_var_2.get()) or currentPercent < float(entry_var_3.get())):
-                    step+=1
-                    if step <6:
-                        create_source_sheet(file_path, step,experts,True)
-                        current_sheet_index += 1
-            LoadSheet()
-
-            canvas.itemconfigure(image_9_active, state="normal")
-            canvas.itemconfigure(image_9, state="hidden")
+        if (currentPercent != 0 and currentPercent is not None) and currentPercent < float(entry_var_2.get()) and currentPercent > float(entry_var_3.get()):    
+            handle_next(notebook)
+        else:
+            if check_data():
+                if step <=5:
+                    NextStep(float(entry_var_2.get()), float(entry_var_3.get()))   
+    
+                    if (currentPercent == 0 or currentPercent is None) or ( currentPercent > float(entry_var_2.get()) or currentPercent < float(entry_var_3.get())):
+                        step+=1
+                        if step <6:
+                            create_source_sheet(file_path, step,experts,True)
+                            current_sheet_index += 1
+                LoadSheet()
+    
+                canvas.itemconfigure(image_9_active, state="normal")
+                canvas.itemconfigure(image_9, state="hidden")
         
-    if (currentPercent != 0 and currentPercent is not None) and currentPercent < float(entry_var_2.get()) and currentPercent > float(entry_var_3.get()):    
-        handle_next(notebook)
+    
 
 # Delete an excel file after Reset
 def remove_excel_file():
