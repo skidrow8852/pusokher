@@ -2,10 +2,9 @@ import os
 from pathlib import Path
 from tkinter import Tk, Canvas, Entry,  PhotoImage,StringVar, messagebox, ttk
 import openpyxl
-from calculation import create_file, create_sheet_window, create_source_sheet, delete_default_sheet, fill_the_cells
+from calculation import create_file, create_sheet_window, create_source_sheet, delete_default_sheet, fill_the_cells, calculations
 from openpyxl import load_workbook
 import argparse
-from calculation import calculations
 
 # Global variables
 workbook = None
