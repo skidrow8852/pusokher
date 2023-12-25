@@ -148,35 +148,6 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
 
 
 
-def get_sheet(filepath, index):
-    wb = openpyxl.load_workbook(filepath)
-
-    sheet_names = wb.sheetnames
-
-    sheet = wb[sheet_names[index - 1]]
-    df = pd.DataFrame(sheet.values)
-
-    return df
-
-
-def select_random_experts(total_number_of_experts=1000, number_of_experts=5):
-    numbers = list(range(1, total_number_of_experts+1))
-    random_numbers = random.sample(numbers, number_of_experts)
-
-    sorted_keys = [f"E{i}" for i in range(1, number_of_experts+1)]
-
-    result = dict(zip(sorted_keys, random_numbers))
-
-    return result
-
-
-# function for development assistance
-def output_random_experts():
-    pprint.pprint("Случайно выбранные эксперты")
-    pp = pprint.PrettyPrinter(sort_dicts=False)
-    pp.pprint(select_random_experts())
-
-
 # function for development assistance
 def fill_the_cells(filepath, step, number_of_experts=5):
     wb = openpyxl.load_workbook(filepath)
@@ -429,5 +400,3 @@ def delete_default_sheet(filepath):
     wb.save(filepath)
 
     
-
-
