@@ -124,7 +124,7 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
         for entry in changed_fields:
             entry_value = entry.get()
             col_index = entry.grid_info()["column"] - 1
-            row_index = entry.grid_info()["row"] - 1 + entry_fields[openpyxl.utils.get_column_letter(col_index + 2)][0]
+            row_index = entry.grid_info()["row"] - 2 + entry_fields[openpyxl.utils.get_column_letter(col_index + 2)][0]
             
             # Convert the entry value to a float
             col_letter = openpyxl.utils.get_column_letter(col_index + 2)
