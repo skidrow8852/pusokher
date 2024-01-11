@@ -39,15 +39,13 @@ file_path = args.file if args.file else "table.xlsx"
 
 # Check for change on the Expert input
 def saveExperts(*args):
-    if entry_var_1.get() != "5":
+    
        
-            # Input is a valid number
-            canvas.itemconfigure(image_8_active, state="normal")
-            canvas.itemconfigure(image_8, state="hidden")
+    # Input is a valid number
+    canvas.itemconfigure(image_8_active, state="normal")
+    canvas.itemconfigure(image_8, state="hidden")
         
-    else:
-            canvas.itemconfigure(image_8_active, state="hidden")
-            canvas.itemconfigure(image_8, state="normal")
+    
 
 
 # Set the Number of Experts
