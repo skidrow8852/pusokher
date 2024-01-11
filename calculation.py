@@ -1,16 +1,24 @@
-import pprint
 import random
 from statistics import mean
 from math import sqrt
+from io import BytesIO
+import scipy.stats as stats
 import tkinter as tk
 import openpyxl
-import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 
 # Global variables
 workbook = None
 sheet_names = []
 current_sheet_index = 0
+iteration_number = 1000
+# DIR WHERE IMAGES SAVED TO
+# WHEN RUNNING MAKE SURE ITS FILLED WITH DIRECTORY OF FILE
+source_dir = ""
+
 
 def format_number(value):
     if isinstance(value, int):
@@ -24,8 +32,7 @@ def format_number(value):
         return str(value)
 
 
-
-def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, image=None):
+def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, image=None):
     # Read data from the sheet
     sheet = workbook[sheet_name]
     data = []
@@ -90,7 +97,7 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
         # Check if the column index is within bounds
         if col_index >= len(data[0]):
             continue
-        
+
         if sheet_name.startswith("Исход"):
             for row_index in range(start_row - 1, end_row):
                 cell_data = data[row_index][col_index]
@@ -116,16 +123,16 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
     # Function to save the changed data to the sheet
     def save_changed_data():
         changed_fields = []
-        
+
         for entry in entries:
             if entry_values[entry] != entry.get():  # Compare current entry value with original value
                 changed_fields.append(entry)
-        
+
         for entry in changed_fields:
             entry_value = entry.get()
             col_index = entry.grid_info()["column"] - 1
             row_index = entry.grid_info()["row"] - 2 + entry_fields[openpyxl.utils.get_column_letter(col_index + 2)][0]
-            
+
             # Convert the entry value to a float
             col_letter = openpyxl.utils.get_column_letter(col_index + 2)
             if col_letter in ["B", "C", "D"]:
@@ -134,9 +141,9 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
                 except ValueError:
                     print("Error: Invalid number entered")
                     continue
-            
+
             sheet.cell(row=row_index + 1, column=col_index + 2).value = entry_value
-        
+
         # Save the workbook back to the file
         workbook.save(file)
 
@@ -144,8 +151,6 @@ def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, im
     canvas.tag_bind(image, "<Button-1>", lambda event: save_changed_data())
 
     return sheet_frame
-
-
 
 
 # function for development assistance
@@ -176,13 +181,83 @@ def create_file(filepath):
     return wb
 
 
-def create_source_sheet(filepath, step,number_of_experts=5, needed=False):
+def distribution(filepath, step, source_dir, number_of_experts):
+    create_source_sheet(filepath, step, distr=True)
     wb = openpyxl.load_workbook(filepath)
-    sheet_name = f'Исходные данные {step} шага'
+
+    source_sheet_name = f'Исходные данные {step} шага'
+    source_sheet = wb[source_sheet_name]
+
+    distribution_sheet_name = f'Распределенные данные {step} шага'
+    distribution_sheet = wb[distribution_sheet_name]
+
+    indexes = {"минимально": 2, "среднее": 3, "максимально": 4}
+
+    min_column_values = []
+    for row in source_sheet.iter_rows(min_row=1, values_only=True):
+        value = row[indexes["минимально"] - 1]
+        if isinstance(value, int):
+            min_column_values.append(value)
+
+    max_column_values = []
+    for row in source_sheet.iter_rows(min_row=1, values_only=True):
+        value = row[indexes["максимально"] - 1]
+        if isinstance(value, int):
+            max_column_values.append(value)
+
+    most_likely_column_values = []
+    for row in source_sheet.iter_rows(min_row=1, values_only=True):
+        value = row[indexes["среднее"] - 1]
+        if isinstance(value, int):
+            most_likely_column_values.append(value)
+
+    # Создаем массив для хранения случайных оценок
+    random_scores = np.zeros((len(min_column_values), iteration_number))
+
+    for i in range(number_of_experts):
+        scale = max_column_values[i] - min_column_values[i]
+        c = (most_likely_column_values[i] - min_column_values[i]) / scale
+        loc = min_column_values[i]
+
+        distribution = stats.triang(loc=loc, c=c, scale=scale)
+        random_scores[i] = distribution.rvs(size=iteration_number)
+
+    # запись статистических показателей для каждого эксперта
+    for i in range(number_of_experts):
+        distribution_sheet.cell(column=2, row=i + 2, value=np.min(random_scores[i]))
+        distribution_sheet.cell(column=3, row=i + 2, value=np.mean(random_scores[i]))
+        distribution_sheet.cell(column=4, row=i + 2, value=np.max(random_scores[i]))
+
+        # Save plot image to a byte stream
+        image_stream = BytesIO()
+        plt.hist(random_scores[i], bins='auto')
+        plt.title('Распределение для Эксперта {}'.format(i + 1))
+        plt.xlabel('Значение')
+        plt.ylabel('Частота')
+        plt.savefig(image_stream, format='png')
+
+        # Rewind the byte stream position to the beginning
+        image_stream.seek(0)
+
+        # Save plot image to a file in the specified image directory
+        image_path = os.path.join(source_dir, f'распределение_{step}_шаг_{i + 1}_эксперт.png')
+        plt.savefig(image_path, format='png')
+        plt.close()
+
+    wb.save(filepath)
+
+
+def create_source_sheet(filepath, step, number_of_experts=5, needed=False, distr=None):
+    wb = openpyxl.load_workbook(filepath)
+
+    if distr is None:
+        sheet_name = f'Исходные данные {step} шага'
+    else:
+        sheet_name = f'Распределенные данные {step} шага'
 
     sheet = wb.create_sheet(title=sheet_name)
 
-    column_names = ['минимально', 'среднее', 'максимально']
+    column_names = ['минимально', 'наиболее вероятно', 'максимально']
 
     # generating rows with experts
     for row_num in range(1, number_of_experts + 1):
@@ -193,15 +268,16 @@ def create_source_sheet(filepath, step,number_of_experts=5, needed=False):
     for col_num, column_name in enumerate(column_names, start=1):
         sheet.cell(row=1, column=col_num + 1, value=column_name)
 
-    # # generating feedback columns
+        # generating feedback columns
         if needed:
-            for reason in range(len(column_names)):
-                sheet.cell(row=1, column=reason + len(column_names) + 3, value=f"Объяснение {column_names[reason]}")
+            if distr is None:
+                for reason in range(len(column_names)):
+                    sheet.cell(row=1, column=reason + len(column_names) + 3, value=f"Объяснение {column_names[reason]}")
 
     wb.save(filepath)
 
 
-def create_calculation_sheet(filepath, step,number_of_experts=5):
+def create_calculation_sheet(filepath, step, number_of_experts=5):
     wb = openpyxl.load_workbook(filepath)
 
     sheet_name = f'Вычисления {step} шага'
@@ -227,10 +303,12 @@ def create_calculation_sheet(filepath, step,number_of_experts=5):
     return wb, sheet
 
 
-def calculations(filepath, step, total_number_of_experts=1000,number_of_experts=5):
-    wb, calculation_sheet = create_calculation_sheet(filepath, step,number_of_experts)
+def calculations(filepath, step, total_number_of_experts=1000, number_of_experts=5):
 
-    source_sheet_name = f'Исходные данные {step} шага'
+    distribution(filepath, step, source_dir, number_of_experts)
+    wb, calculation_sheet = create_calculation_sheet(filepath, step, number_of_experts)
+
+    source_sheet_name = f'Распределенные данные {step} шага'
     source_sheet = wb[source_sheet_name]
 
     iteration_number = total_number_of_experts
@@ -398,5 +476,3 @@ def delete_default_sheet(filepath):
     default_sheet = wb[default_sheet_name]
     wb.remove(default_sheet)
     wb.save(filepath)
-
-    

@@ -17,6 +17,7 @@ min_percent = 3
 step = 1
 currentPercent = 0
 
+
 def relative_to_assets(path: str) -> Path:
     current_path = Path(__file__).parent.absolute()  # Get the current directory
     assets_path = current_path / Path("assets/frame2")  # Set assets path
@@ -36,17 +37,12 @@ args = parse_arguments()
 file_path = args.file if args.file else "table.xlsx"
 
 
-
 # Check for change on the Expert input
 def saveExperts(*args):
-    
-       
     # Input is a valid number
     canvas.itemconfigure(image_8_active, state="normal")
     canvas.itemconfigure(image_8, state="hidden")
         
-    
-
 
 # Set the Number of Experts
 def NumofExperts():
@@ -141,7 +137,6 @@ def LoadSheet():
     notebook.bind("<<NotebookTabChanged>>", check_selected_tab)
 
 
-
 # Handle Next Step (Display Next sheet)
 def handle_next(notebook):
     global current_sheet_index
@@ -150,7 +145,6 @@ def handle_next(notebook):
         current_sheet_index = 0
 
     notebook.select(current_sheet_index)
-
 
 
 # Handle Previous Step (Display Previous sheet)
@@ -171,9 +165,6 @@ def NextStep(max_possible_percent,min_possible_percent):
         if step < 6:
             currentPercent = calculations(file_path, step,1000,experts)
     
-
-
-
 
 # Check if the data on the sheet are correct and valid
 def check_data():
@@ -228,7 +219,6 @@ def validate_inputs():
                 canvas.itemconfigure(image_9_active, state="normal")
                 canvas.itemconfigure(image_9, state="hidden")
         
-    
 
 # Delete an excel file after Reset
 def remove_excel_file():
