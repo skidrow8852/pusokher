@@ -31,10 +31,11 @@ def format_number(value):
         return str(value)
 
 
-def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, image=None):
+
+
+def create_sheet_window(sheet_name, workbook, notebook,file=None,canvas=None, image=None):
     # Read data from the sheet
     sheet = workbook[sheet_name]
-
     data = []
     for row in sheet.iter_rows(values_only=True):
         formatted_row = [format_number(cell) if isinstance(cell, (int, float)) else cell for cell in row]
@@ -52,7 +53,6 @@ def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, 
     sheet_scrollbar = tk.Scrollbar(sheet_frame, orient=tk.VERTICAL, command=sheet_canvas.yview)
     sheet_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     sheet_canvas.configure(yscrollcommand=sheet_scrollbar.set)
-    
 
     # Create a frame inside the canvas for the sheet data
     sheet_data_frame = tk.Frame(sheet_canvas)
@@ -91,6 +91,15 @@ def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, 
 
     def entry_change(event, entry):
         entry_values[entry] = entry.get()  # Store the current entry value
+        entry_value = entry.get()
+        col_index = entry.grid_info()["column"] - 1
+        row_index = entry.grid_info()["row"] - 2 + entry_fields[openpyxl.utils.get_column_letter(col_index + 2)][0]
+                
+        try:  
+            sheet.cell(row=row_index + 1, column=col_index + 2).value = int(entry_value)
+            workbook.save(file)
+        except ValueError:
+            print("")
 
     for col_letter, (start_row, end_row) in entry_fields.items():
         col_index = openpyxl.utils.column_index_from_string(col_letter) - 1
@@ -98,7 +107,7 @@ def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, 
         # Check if the column index is within bounds
         if col_index >= len(data[0]):
             continue
-
+        
         if sheet_name.startswith("Исход"):
             for row_index in range(start_row - 1, end_row):
                 cell_data = data[row_index][col_index]
@@ -124,16 +133,18 @@ def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, 
     # Function to save the changed data to the sheet
     def save_changed_data():
         changed_fields = []
-
+        
         for entry in entries:
             if entry_values[entry] != entry.get():  # Compare current entry value with original value
                 changed_fields.append(entry)
-
+        
+        
         for entry in changed_fields:
             entry_value = entry.get()
+            
             col_index = entry.grid_info()["column"] - 1
             row_index = entry.grid_info()["row"] - 2 + entry_fields[openpyxl.utils.get_column_letter(col_index + 2)][0]
-
+            
             # Convert the entry value to a float
             col_letter = openpyxl.utils.get_column_letter(col_index + 2)
             if col_letter in ["B", "C", "D"]:
@@ -142,11 +153,12 @@ def create_sheet_window(sheet_name, workbook, notebook, file=None, canvas=None, 
                 except ValueError:
                     print("Error: Invalid number entered")
                     continue
-
+            
             sheet.cell(row=row_index + 1, column=col_index + 2).value = entry_value
-
+        
         # Save the workbook back to the file
         workbook.save(file)
+
 
     # Create a save button for saving the changed data to the sheet
     canvas.tag_bind(image, "<Button-1>", lambda event: save_changed_data())
