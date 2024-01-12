@@ -238,7 +238,7 @@ def create_file(filepath):
 def distribution(filepath, step, source_dir, number_of_experts):
     create_source_sheet(filepath, step, number_of_experts, needed=False, distr=True)
     wb = openpyxl.load_workbook(filepath)
-
+    variants = []
     
     source_sheet_name = f'Исходные данные {step} шага'
     source_sheet = wb[source_sheet_name]
@@ -276,6 +276,9 @@ def distribution(filepath, step, source_dir, number_of_experts):
 
         distribution = stats.triang(loc=loc, c=c, scale=scale)
         random_scores[i] = distribution.rvs(size=iteration_number)
+        variance = np.var(random_scores[i])
+        variants.append(variance)
+
 
     # запись статистических показателей для каждого эксперта
     for i in range(number_of_experts):
@@ -303,7 +306,7 @@ def distribution(filepath, step, source_dir, number_of_experts):
         
 
     wb.save(filepath)
-    
+    return variants
 
 
 
@@ -366,7 +369,8 @@ def create_calculation_sheet(filepath, step, number_of_experts=5):
 
 def calculations(filepath, step, total_number_of_experts=1000, number_of_experts=5, source="."):
 
-    distribution(filepath, step, source, number_of_experts)
+    variants= distribution(filepath, step, source, number_of_experts)
+    
     
     wb, calculation_sheet = create_calculation_sheet(filepath, step, number_of_experts)
      
@@ -437,15 +441,9 @@ def calculations(filepath, step, total_number_of_experts=1000, number_of_experts
 
     # вычисление дисперсии
     def variance(expert):
-        expert_row_source_sheet = expert + 1
-        min_rate = source_sheet.cell(column=2, row=expert_row_source_sheet).value
-        avg_rate = source_sheet.cell(column=3, row=expert_row_source_sheet).value
-        max_rate = source_sheet.cell(column=4, row=expert_row_source_sheet).value
-
-        expert_row_calculation_sheet = expert + 2
-        rates_mean = calculation_sheet.cell(column=3, row=expert_row_calculation_sheet).value
-
-        var = ((min_rate - rates_mean) ** 2 + (avg_rate - rates_mean) ** 2 + (max_rate - rates_mean) ** 2) / 3
+        
+        # variants.insert(0,variants[0])
+        var = variants[expert - 1]
 
         return var
 
