@@ -5,6 +5,8 @@ import openpyxl
 from calculation import create_file, create_sheet_window, create_source_sheet, delete_default_sheet, fill_the_cells, calculations
 from openpyxl import load_workbook
 import argparse
+from PIL import Image, ImageTk
+import tkinter as tk
 
 # Global variables
 workbook = None
@@ -16,6 +18,8 @@ max_percent = 10
 min_percent = 3
 step = 1
 currentPercent = 0
+selectedSheet = 1
+
 
 def relative_to_assets(path: str) -> Path:
     current_path = Path(__file__).parent.absolute()  # Get the current directory
@@ -36,35 +40,36 @@ args = parse_arguments()
 file_path = args.file if args.file else "table.xlsx"
 
 
-
 # Check for change on the Expert input
 def saveExperts(*args):
-    
-       
     # Input is a valid number
     canvas.itemconfigure(image_8_active, state="normal")
     canvas.itemconfigure(image_8, state="hidden")
+    if int(entry_var_1.get())  <= 0:
+        messagebox.showwarning("Error", "Пожалуйста, введите число больше 0.")
         
-    
-
 
 # Set the Number of Experts
 def NumofExperts():
     global experts
     try:
         value = int(entry_var_1.get())
-        if value != experts:
+        if int(entry_var_1.get())  <= 0:
+            messagebox.showwarning("Error", "Пожалуйста, введите число больше 0.")
+        else:
+            if value != experts:
+            
 
-            experts = value
-            remove_excel_file()
+                experts = value
+                remove_excel_file()
 
-            create_file(file_path)
+                create_file(file_path)
 
-            create_source_sheet(file_path, 1, experts, True)
+                create_source_sheet(file_path, 1, experts, needed=True,distr=None)
 
-            delete_default_sheet(file_path)
+                delete_default_sheet(file_path)
 
-            LoadSheet()
+                LoadSheet()
         canvas.itemconfigure(image_8_active, state="hidden")
         canvas.itemconfigure(image_8, state="normal")
             
@@ -111,7 +116,7 @@ def LoadSheet():
 
     # Define the event handler function
     def check_selected_tab(event):
-        global current_sheet_index
+        global current_sheet_index,selectedSheet
         current_tab = notebook.tab(notebook.select(), "text")
         current_tab_number = int(''.join(filter(str.isdigit, current_tab)))
         has_higher_tabs = False
@@ -128,18 +133,24 @@ def LoadSheet():
             if (currentPercent == 0 or currentPercent is None) or ( currentPercent > float(entry_var_2.get()) or currentPercent < float(entry_var_3.get())):
                 canvas.itemconfigure(image_7_active, state="normal")
                 canvas.itemconfigure(image_7, state="hidden")
+                canvas.itemconfigure(image_10_active, state="hidden")
             
             else:
                 canvas.itemconfigure(image_7_active, state="hidden")
                 canvas.itemconfigure(image_7, state="normal")
         else:
+            
+            if current_tab.startswith("Распределенные"):
+                selectedSheet =  int(current_tab.split()[-2])
+                canvas.itemconfigure(image_10_active, state="normal")
+            else:
+                canvas.itemconfigure(image_10_active, state="normal")
             canvas.itemconfigure(image_7_active, state="hidden")
             canvas.itemconfigure(image_7, state="normal")
         
         current_sheet_index = notebook.index(notebook.select())
     # Bind the event handler to the NotebookTabChanged event
     notebook.bind("<<NotebookTabChanged>>", check_selected_tab)
-
 
 
 # Handle Next Step (Display Next sheet)
@@ -150,7 +161,6 @@ def handle_next(notebook):
         current_sheet_index = 0
 
     notebook.select(current_sheet_index)
-
 
 
 # Handle Previous Step (Display Previous sheet)
@@ -169,9 +179,50 @@ def NextStep(max_possible_percent,min_possible_percent):
     
     if (currentPercent == 0 or currentPercent is None) or ( currentPercent > max_possible_percent or currentPercent < min_possible_percent):
         if step < 6:
-            currentPercent = calculations(file_path, step,1000,experts)
+            currentPercent = calculations(file_path, step,int(entry_var_4.get()),experts, os.path.dirname(file_path))
     
 
+
+# Function to open a new tkinter window and display images
+def open_image_window():
+    global selectedSheet
+    # Create a new tkinter window
+    image_window = tk.Toplevel()
+    image_window.title(f"Графики Распределение Щаг {selectedSheet}")
+
+    # Create a canvas widget
+    canvas = tk.Canvas(image_window)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Create a scrollbar and associate it with the canvas
+    scrollbar = tk.Scrollbar(image_window, command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Create a frame inside the canvas
+    image_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=image_frame, anchor=tk.NW)
+    
+    # Load and display images
+    image_paths = []
+    for i in range(1, experts + 1):
+        image_path = os.path.dirname(file_path) + f"/распределение_{selectedSheet}_шаг_{i}_эксперт.png"
+        image_paths.append(image_path)
+    for path in image_paths:
+        image = Image.open(path)
+        photo = ImageTk.PhotoImage(image)
+
+        # Create a label to display the image
+        label = tk.Label(image_frame, image=photo)
+        label.image = photo
+        label.pack()
+
+    # Update the canvas scroll region
+    
+    canvas.update_idletasks()
+    canvas.configure(scrollregion=canvas.bbox("all"))
+
+    image_window.geometry(f"650x600")
 
 
 
@@ -200,9 +251,11 @@ def check_data():
         return True
 
 
+
+
 # Function responsible for Sheet Creation for each step and input validation
 def validate_inputs():
-    global step, current_sheet_index, currentPercent
+    global step, current_sheet_index, currentPercent, file_path
     all_numeric = all(var.get().isdigit() for var in input_vars)
     if not all_numeric:
         messagebox.showwarning("Error", "Пожалуйста, введите числовые значения.")
@@ -211,6 +264,7 @@ def validate_inputs():
         entry_1.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
         entry_2.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
         entry_3.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
+        entry_4.config(state='disabled', disabledbackground='#0F0D1D', disabledforeground='#878787')
         if (currentPercent != 0 and currentPercent is not None) and currentPercent < float(entry_var_2.get()) and currentPercent > float(entry_var_3.get()):    
             handle_next(notebook)
         else:
@@ -219,16 +273,20 @@ def validate_inputs():
                     NextStep(float(entry_var_2.get()), float(entry_var_3.get()))   
     
                     if (currentPercent == 0 or currentPercent is None) or ( currentPercent > float(entry_var_2.get()) or currentPercent < float(entry_var_3.get())):
+                        
                         step+=1
                         if step <6:
-                            create_source_sheet(file_path, step,experts,True)
+                            create_source_sheet(file_path, step,experts,needed=True)
                             current_sheet_index += 1
                 LoadSheet()
     
                 canvas.itemconfigure(image_9_active, state="normal")
                 canvas.itemconfigure(image_9, state="hidden")
+    # for filename in os.listdir(os.path.dirname(file_path)):
+    #     if filename.startswith("распределение") and filename.endswith((".png")):
+    #         file = os.path.join(os.path.dirname(file_path), filename)
+    #         os.remove(file)
         
-    
 
 # Delete an excel file after Reset
 def remove_excel_file():
@@ -246,7 +304,7 @@ def resetAll():
 
     create_file(file_path)
 
-    create_source_sheet(file_path, 1, experts, True)
+    create_source_sheet(file_path, 1, experts, needed=True)
 
     delete_default_sheet(file_path)
 
@@ -255,10 +313,12 @@ def resetAll():
     entry_1.config(state='normal')
     entry_2.config(state='normal' )
     entry_3.config(state='normal')
+    entry_4.config(state='normal')
 
     entry_var_1.set(f"{experts}")
     entry_var_2.set("10")
     entry_var_3.set("3")
+    entry_var_4.set("1000")
 
 
 window = Tk()
@@ -404,7 +464,7 @@ image_8_active = canvas.create_image(
 
 
 canvas.create_text(
-    524.0,
+    504.0,
     23.0,
     anchor="nw",
     text="Максимальный  процент",
@@ -415,7 +475,7 @@ canvas.create_text(
 entry_image_2 = PhotoImage(
     file=relative_to_assets("entry_2.png"))
 entry_bg_2 = canvas.create_image(
-    614.5,
+    596.5,
     83.5,
     image=entry_image_2
 )
@@ -427,7 +487,7 @@ entry_2 = Entry( bd=0, bg="#0F0D1D",  fg='white', font=("Arial", 18), highlightt
 
 
 entry_2.place(
-    x=539.0,
+    x=519.0,
     y=56.0,
     width=151.0,
     height=53.0
@@ -436,7 +496,7 @@ entry_2.place(
 entry_image_3 = PhotoImage(
     file=relative_to_assets("entry_3.png"))
 entry_bg_3 = canvas.create_image(
-    886.5,
+    830.5,
     83.5,
     image=entry_image_3
 )
@@ -445,14 +505,14 @@ entry_var_3.set("3")
 entry_3 = Entry( bd=0, bg="#0F0D1D",  fg='white', font=("Arial", 18), highlightthickness=0,highlightcolor='white',
                 highlightbackground='white', textvariable=entry_var_3)
 entry_3.place(
-    x=811.0,
+    x=755.0,
     y=56.0,
     width=151.0,
     height=53.0
 )
 
 canvas.create_text(
-    796.0,
+    745.0,
     23.0,
     anchor="nw",
     text="Минимальный  процент",
@@ -460,10 +520,40 @@ canvas.create_text(
     font=("PlusJakartaSansRoman SemiBold", 17 * -1)
 )
 
+
+entry_image_4 = PhotoImage(
+    file=relative_to_assets("entry_3.png"))
+entry_bg_4 = canvas.create_image(
+    1060,
+    83.5,
+    image=entry_image_4
+)
+
+entry_var_4 = StringVar()
+entry_var_4.set("1000")
+entry_4 = Entry( bd=0, bg="#0F0D1D",  fg='white', font=("Arial", 18), highlightthickness=0,highlightcolor='white',
+                highlightbackground='white', textvariable=entry_var_4)
+entry_4.place(
+    x=987.0,
+    y=56.0,
+    width=151.0,
+    height=53.0
+)
+
+canvas.create_text(
+    990.0,
+    23.0,
+    anchor="nw",
+    text="Кол-во Итерации",
+    fill="#FFFFFF",
+    font=("PlusJakartaSansRoman SemiBold", 17 * -1)
+)
+
+
 image_image_9 = PhotoImage(
     file=relative_to_assets("image_9.png"))
 image_9 = canvas.create_image(
-    1269.0,
+    1350.0,
     72.0,
     image=image_image_9
 )
@@ -471,7 +561,7 @@ image_9 = canvas.create_image(
 image_image_9_active = PhotoImage(
     file=relative_to_assets("image_9_active.png"))
 image_9_active = canvas.create_image(
-    1269.0,
+    1350.0,
     72.0,
     image=image_image_9_active,
     state='hidden'
@@ -479,16 +569,42 @@ image_9_active = canvas.create_image(
 
 
 
-input_vars = [entry_var_1, entry_var_2, entry_var_3]  # List of input fields
+
+input_vars = [entry_var_1, entry_var_2, entry_var_3,entry_var_4]  # List of input fields
 entry_var_1.trace_add("write", saveExperts)  # Bind trace to each entry
+
+
+
+
+image = Image.open(relative_to_assets("graphic.png"))
+
+# Resize the image with the desired width and height
+new_width = 170
+new_height = 50
+resized_image = image.resize((new_width, new_height))
+
+# Convert the resized image to a PhotoImage object
+image_image_10_active = ImageTk.PhotoImage(resized_image)
+
+# Create the image on the canvas
+image_10_active = canvas.create_image(
+    600.0,
+    660.0,
+    image=image_image_10_active,
+    state='hidden'
+)
+
+
 
 saveExperts()
 LoadSheet()
 canvas.tag_raise(image_3)
 canvas.tag_raise(image_2)
+canvas.tag_raise(image_2)
 canvas.tag_bind(image_3, "<Button-1>", lambda event: validate_inputs())
 canvas.tag_bind(image_8_active, "<Button-1>", lambda event: NumofExperts())
 canvas.tag_bind(image_7_active, "<Button-1>", lambda event: generateRand())
+canvas.tag_bind(image_10_active, "<Button-1>", lambda event: open_image_window())
 canvas.tag_bind(image_9_active, "<Button-1>", lambda event: resetAll())
 canvas.tag_bind(image_2, "<Button-1>", lambda event: handle_previous(notebook))
 
