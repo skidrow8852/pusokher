@@ -1,0 +1,10 @@
+copy
+random
+statistics
+math
+tkinter
+openpyxl
+numpy
+matplotlib
+scipy
+pillow
